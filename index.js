@@ -18,6 +18,11 @@ const readline = require('readline');
 let AB;
 let startTime;
 let formatter;
+let buildCost;
+
+const prettify = num => {
+  return num.toLocaleString('en-US', {maximumSignificantDigits: 4, notation: 'compact', compactDisplay: 'short'})
+}
 
 const start = () => {
     global.document = dom.window.document;
@@ -55,25 +60,37 @@ const start = () => {
 
     AB.speed = 100;
 
-    AB.enemyLevel = 45;
-    AB.maxEnemyLevel = 59;
-    AB.oneTimers.Master_of_Arms.owned = true;
-    AB.oneTimers.Dusty_Tome.owned = true;
-    AB.oneTimers.Whirlwind_of_Arms.owned = true;
-
     // Sword and Pants start out equipped by default, so we need to unequip them.
     AB.equip("Sword");
     AB.equip("Pants");
 
-    let items_to_use = require('./items.json');
+    let settings = require('./items.json');
+    let items_to_use = settings.items;
+    settings.oneTimers.forEach(n => AB.oneTimers[n].owned = true)
+    AB.enemyLevel = settings.enemyLevel;
+    AB.maxEnemyLevel = settings.maxEnemyLevel;
 
     AB.bonuses.Extra_Limbs.level = items_to_use.length - 4;
     console.log(items_to_use);
+    buildCost = 0;
     items_to_use.forEach(x => {
         AB.items[x.n].level = x.l;
         AB.equip(x.n);
+        let curCost = 5;
+        if (AB.items[x.n].startPrice) curCost = AB.items[x.n].startPrice;
+        let priceMod = 3;
+        if (AB.items[x.n].priceMod) priceMod = AB.items[x.n].priceMod;
+        let mycost = 0;
+        for (let step = 0; step < x.l - 1; step++) {
+          mycost += curCost;
+          curCost *= priceMod;
+        }
+        console.log(x.n + " lv " + x.l + " -> " + prettify(mycost));
+        buildCost += mycost;
     });
+    console.log("Total cost =", prettify(buildCost));
 
+    console.log("Starting simulation");
     AB.update();
 
     let run = 0;
@@ -84,14 +101,24 @@ const start = () => {
     wrapup();
 }
 
+const enemyCount = (level) => {
+    if (level < 20) return 10 * level;
+    return 190 + (15 * (level - 19));
+}
+
 const wrapup = () => {
     const endTime = Date.now();
     const time = endTime - startTime;
+    const WR = AB.sessionEnemiesKilled / (AB.sessionEnemiesKilled + AB.sessionTrimpsKilled);
+    const toKill = enemyCount(AB.enemyLevel);
+    const base_dust = AB.getDustPs();
+
     console.log("Took " + time + " ms");
     console.log(AB.lootAvg.counter + " ms processed.");
-    console.log(AB.sessionEnemiesKilled + " killed, ", AB.sessionTrimpsKilled + " died.");
+    console.log(AB.sessionEnemiesKilled + " killed,", AB.sessionTrimpsKilled + " died. [" + prettify(100 * WR) + "%]");
+    console.log("Grinding time =", formatter.format(buildCost / base_dust) + "s.");
+    console.log("Clearing time =", formatter.format(toKill / AB.sessionEnemiesKilled * AB.lootAvg.counter / 1000) + "s.");
 
-    base_dust = AB.getDustPs();
     console.log("Base value: " + formatter.format(base_dust) + " dust per second");
 }
 
