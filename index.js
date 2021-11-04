@@ -1,4 +1,5 @@
-const jsdom = require("jsdom");
+const jsdom = require('jsdom');
+const { program } = require('commander');
 const { JSDOM } = jsdom;
 const html = `<html><head></head><body>
     <div id="autoDust"></div>
@@ -15,6 +16,12 @@ const html = `<html><head></head><body>
 </body></html>`;
 const dom = new JSDOM(html);
 const readline = require('readline');
+
+program
+  .option('-v56, --version56', 'Runs the simulation with version 5.6 of Trimps. This option will dropped once 5.6 is stable and released.')
+program.parse(process.argv);
+const options = program.opts();
+
 let AB;
 let startTime;
 let formatter;
@@ -52,7 +59,14 @@ const start = () => {
 
     formatter = new Intl.NumberFormat('en-US', { minimumFractionDigits: 3 });
 
-    AB = require('./object.js');
+    if (options.version56) {
+        console.log("A");
+        AB = require('./object56.js');
+        console.log(AB);
+    }
+    else {
+        AB = require('./object.js');
+    }
 
     let iterations = 100;
     let farming = false;
